@@ -540,7 +540,6 @@ function renderMe(){
   const totalLogs=state.logs.length;
   const totalSets=state.logs.reduce((n,l)=>n+l.sets.length,0);
   $("#view").innerHTML=`
-  <div class="me-note">想装成 App：手机浏览器打开本文件 → 右上角菜单 → 「添加到主屏幕」/「安装应用」，之后从桌面图标进入，全屏使用。</div>
   <div class="card">
     <h3>进度概览</h3>
     <div class="me-item"><div class="k">训练记录</div><div class="v">${totalLogs} 次 · ${totalSets} 组</div></div>
