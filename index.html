@@ -214,7 +214,7 @@ window.addEventListener("hashchange",router);
 /* ============ 视图：今日 ============ */
 function renderToday(){
   setTitle("今日","减脂增肌 · 周五休息 · 食堂30元版");
-  const wk=WEEK_KEYS[new Date().getDay()];
+  const wk=["sun","mon","tue","wed","thu","fri","sat"][new Date().getDay()];
   const plan=state.plan[wk];
   const t=todayStr();
   const todaysLogs=state.logs.filter(l=>l.date===t);
