@@ -501,7 +501,6 @@ function renderDiet(){
     <div class="meal-grid">
       ${[["b","早"],["l","午"],["d","晚"],["s","加"]].map(([k,n])=>`<div class="meal-item ${ml[k]?"on":""}" data-meal="${k}"><div class="dot"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></div><div class="nm">${n}餐</div></div>`).join("")}
     </div>
-    <div class="muted" style="margin-top:10px">晚餐必须吃：一荤一素+米饭，别只喝牛奶。</div>
   </div>
   <div class="card">
     <h3>蛋白质记录</h3>
