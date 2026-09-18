@@ -213,7 +213,7 @@ function setTitle(t,sub){$("#pageTitle").textContent=t;$("#pageSub").textContent
 window.addEventListener("hashchange",router);
 /* ============ 视图：今日 ============ */
 function renderToday(){
-  setTitle("今日","减脂增肌 · 周五休息 · 食堂30元版");
+  setTitle("今日","君君最棒");
   const wk=["sun","mon","tue","wed","thu","fri","sat"][new Date().getDay()];
   const plan=state.plan[wk];
   const t=todayStr();
