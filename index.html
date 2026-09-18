@@ -213,7 +213,7 @@ function setTitle(t,sub){$("#pageTitle").textContent=t;$("#pageSub").textContent
 window.addEventListener("hashchange",router);
 /* ============ 视图：今日 ============ */
 function renderToday(){
-  setTitle("今日","君君最棒，晨晨更棒");
+  setTitle("今日 吾爱吾君","死生契阔，与子成说。执子之手，与子偕老。");
   const wk=["sun","mon","tue","wed","thu","fri","sat"][new Date().getDay()];
   const plan=state.plan[wk];
   const t=todayStr();
