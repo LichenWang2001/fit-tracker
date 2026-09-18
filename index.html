@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>健身记录 · 减脂增肌助手</title>
+<meta name="theme-color" content="#1F6E4A">
+<link rel="icon" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><rect width="24" height="24" rx="6" fill="%231F6E4A"/><path d="M7 9v6M5 10v4M17 9v6M19 10v4M7 12h10" stroke="white" stroke-width="1.8" stroke-linecap="round"/></svg>'>
+<link rel="manifest" href="manifest.webmanifest">
+<style>
+:root{
+  --bg:#F6F7F4; --card:#FFFFFF; --line:#E2E8E3;
+  --ink:#22302A; --ink2:#5B6B66; --ink3:#8A9792;
+  --main:#1F6E4A; --main-soft:#E7F1EB; --main-deep:#174F36;
+  --accent:#D97B29; --accent-soft:#F9EFE3;
+  --danger:#C0392B; --ok:#1F8A5B;
+  --radius:14px; --shadow:0 1px 2px rgba(34,48,42,.05);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","HarmonyOS Sans SC","Microsoft YaHei",sans-serif;font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+#app{max-width:540px;margin:0 auto;min-height:100%;display:flex;flex-direction:column}
+header#topbar{position:sticky;top:0;z-index:20;background:var(--bg);padding:calc(14px + env(safe-area-inset-top)) 18px 10px}
+#topbar h1{font-size:24px;font-weight:800;letter-spacing:.5px}
+#topbar .sub{font-size:13px;color:var(--ink2);margin-top:2px}
+main#view{flex:1;padding:4px 16px calc(108px + env(safe-area-inset-bottom))}
+/* ===== 底部导航 ===== */
+nav#tabbar{position:fixed;bottom:0;left:0;right:0;z-index:30;background:rgba(255,255,255,.96);backdrop-filter:blur(8px);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+#tabbar .bar{max-width:540px;margin:0 auto;display:flex}
+#tabbar button{flex:1;background:none;border:none;padding:8px 0 9px;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--ink3);font-size:11px;font-weight:600;cursor:pointer}
+#tabbar button.active{color:var(--main)}
+#tabbar svg{width:23px;height:23px}
+/* ===== 通用组件 ===== */
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:12px;box-shadow:var(--shadow)}
+.card h3{font-size:16px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.muted{color:var(--ink2);font-size:13px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:12px;padding:12px 18px;font-size:15px;font-weight:700;cursor:pointer;transition:transform .08s}
+.btn:active{transform:scale(.97)}
+.btn-main{background:var(--main);color:#fff;width:100%}
+.btn-soft{background:var(--main-soft);color:var(--main-deep)}
+.btn-line{background:#fff;color:var(--ink);border:1px solid var(--line)}
+.btn-sm{padding:7px 12px;font-size:13px;border-radius:9px}
+.btn-danger{background:#FBE9E7;color:var(--danger)}
+.row{display:flex;align-items:center;gap:10px}
+.spread{justify-content:space-between}
+.tag{display:inline-flex;align-items:center;background:var(--main-soft);color:var(--main-deep);border-radius:999px;padding:2px 10px;font-size:12px;font-weight:600}
+.tag-orange{background:var(--accent-soft);color:#A85A18}
+.pill{display:inline-flex;align-items:center;gap:4px;background:#fff;border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:13px;color:var(--ink2);cursor:pointer}
+.pill.active{background:var(--main);border-color:var(--main);color:#fff}
+input,textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:16px;font-family:inherit;background:#FBFCFA;color:var(--ink);outline:none}
+input:focus,textarea:focus{border-color:var(--main)}
+label.fld{display:block;font-size:13px;color:var(--ink2);margin:12px 0 5px;font-weight:600}
+/* ===== 弹层 ===== */
+#mask{position:fixed;inset:0;background:rgba(20,30,25,.45);z-index:40;opacity:0;pointer-events:none;transition:opacity .2s}
+#mask.show{opacity:1;pointer-events:auto}
+#sheet{position:fixed;left:0;right:0;bottom:0;z-index:50;background:#fff;border-radius:20px 20px 0 0;max-height:82vh;overflow-y:auto;transform:translateY(105%);transition:transform .25s ease;padding:10px 18px calc(20px + env(safe-area-inset-bottom));max-width:540px;margin:0 auto}
+#sheet.show{transform:translateY(0)}
+#sheet .grab{width:36px;height:4px;background:#D8DEDA;border-radius:2px;margin:8px auto 6px}
+#sheet h2{font-size:18px;font-weight:800;margin-bottom:6px}
+/* ===== toast ===== */
+#toast{position:fixed;left:50%;bottom:110px;transform:translateX(-50%) translateY(20px);background:rgba(34,48,42,.92);color:#fff;padding:10px 18px;border-radius:12px;font-size:14px;z-index:60;opacity:0;pointer-events:none;transition:all .25s;max-width:80%;text-align:center}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+/* ===== 今日 ===== */
+.today-hero{background:linear-gradient(135deg,var(--main) 0%,#2E8A63 100%);border-radius:16px;padding:18px;color:#fff;margin-bottom:12px}
+.today-hero .day{font-size:14px;opacity:.85}
+.today-hero .plan{font-size:20px;font-weight:800;margin:6px 0 2px}
+.today-hero .meta{font-size:13px;opacity:.9}
+.chip-line{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;scrollbar-width:none}
+.chip-line::-webkit-scrollbar{display:none}
+.progress-track{height:10px;background:#E7ECE8;border-radius:5px;overflow:hidden;margin-top:8px}
+.progress-fill{height:100%;background:var(--main);border-radius:5px;transition:width .3s}
+.meal-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.meal-item{border:1px solid var(--line);border-radius:12px;padding:10px 4px;text-align:center;background:#fff;cursor:pointer;transition:all .15s}
+.meal-item.on{background:var(--main-soft);border-color:var(--main)}
+.meal-item .dot{width:22px;height:22px;border-radius:50%;border:2px solid var(--line);margin:0 auto 6px;display:flex;align-items:center;justify-content:center}
+.meal-item.on .dot{background:var(--main);border-color:var(--main)}
+.meal-item .dot svg{width:13px;height:13px;stroke:#fff;stroke-width:3;fill:none;opacity:0}
+.meal-item.on .dot svg{opacity:1}
+.meal-item .nm{font-size:12px;color:var(--ink2);font-weight:600}
+/* ===== 列表 ===== */
+.list{display:flex;flex-direction:column;gap:10px}
+.log-card{border:1px solid var(--line);border-radius:var(--radius);background:#fff;padding:12px 14px}
+.log-card .top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.log-card .exname{font-weight:700;font-size:15px}
+.log-card .sets{font-size:13px;color:var(--ink2);margin-top:4px}
+.set-line{display:inline-flex;gap:4px;flex-wrap:wrap;margin-top:6px}
+.set-chip{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:3px 8px;font-size:12px;color:var(--ink)}
+.mini-btn{background:none;border:none;color:var(--ink3);font-size:12px;cursor:pointer;padding:4px}
+.ex-group{font-size:13px;font-weight:800;color:var(--main-deep);margin:16px 0 6px;display:flex;align-items:center;gap:6px}
+.ex-item{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--line);border-radius:12px;background:#fff;padding:12px 14px;margin-bottom:8px;cursor:pointer}
+.ex-item .nm{font-weight:700;font-size:15px}
+.ex-item .info{font-size:12px;color:var(--ink2)}
+/* ===== 曲线 ===== */
+.curve-wrap{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:14px;margin-bottom:12px}
+.curve-title{font-size:14px;font-weight:700;margin-bottom:8px;display:flex;justify-content:space-between;align-items:baseline}
+.curve-title .cur{font-size:12px;color:var(--ink3);font-weight:400}
+.curve-svg{width:100%;height:auto;display:block}
+/* ===== 表单 ===== */
+.sets-rows{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.set-row{display:grid;grid-template-columns:44px 1fr 1fr 40px;gap:8px;align-items:center}
+.set-row .idx{font-size:13px;color:var(--ink3);text-align:center;font-weight:700}
+.set-row input{padding:9px 8px;font-size:15px;text-align:center}
+.del-set{background:none;border:none;color:var(--ink3);font-size:18px;cursor:pointer;height:38px}
+.ex-pick{display:flex;gap:8px;flex-wrap:wrap}
+.ex-pick .pill{flex:1;min-width:calc(50% - 8px);justify-content:center;padding:10px 6px;font-size:14px}
+.plate-line{display:flex;gap:5px;flex-wrap:wrap;margin:4px 0 6px;padding-left:52px;align-items:center}
+.plate{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:4px 11px;font-size:12px;color:var(--ink2);cursor:pointer;font-weight:600}
+.plate:active{background:var(--main-soft);color:var(--main-deep);border-color:var(--main)}
+.plate-down{background:#FBE9E7;border-color:#F3C9C4;color:var(--danger)}
+.plate-down:active{background:#F6D6D1;color:#9B2F23;border-color:var(--danger)}
+.rep-line{display:flex;gap:5px;flex-wrap:wrap;margin:0 0 12px;padding-left:52px;align-items:center}
+.rep-label{font-size:11px;color:var(--ink3);padding-right:2px}
+.rep-quick{background:var(--main-soft);border:1px solid #CBE3D6;border-radius:8px;padding:4px 11px;font-size:12px;color:var(--main-deep);cursor:pointer;font-weight:600}
+.rep-quick:active{background:var(--main);color:#fff}
+#lastHint{margin-top:6px}
+.empty{text-align:center;color:var(--ink3);padding:30px 10px;font-size:14px}
+.empty svg{width:44px;height:44px;stroke:var(--ink3);stroke-width:1.4;fill:none;margin:0 auto 10px;display:block}
+.me-note{background:var(--accent-soft);border-radius:12px;padding:10px 12px;font-size:13px;color:#8A4B12;margin-bottom:12px}
+.me-item{border-bottom:1px solid var(--line);padding:12px 2px}
+.me-item:last-child{border-bottom:none}
+.me-item .k{font-size:13px;color:var(--ink3)}
+.me-item .v{font-size:15px;font-weight:600;margin-top:2px}
+.week-edit{display:grid;grid-template-columns:52px 1fr;gap:8px;align-items:center;margin-bottom:8px}
+.week-edit .d{font-size:13px;font-weight:700;color:var(--ink2)}
+.week-edit input{font-size:14px;padding:8px 10px}
+.his-list{max-height:300px;overflow-y:auto}
+.his-item{display:flex;justify-content:space-between;align-items:center;padding:9px 2px;border-bottom:1px dashed var(--line);font-size:14px}
+.his-item .d{color:var(--ink3);font-size:13px}
+@media(min-width:541px){#tabbar{border-left:1px solid var(--line);border-right:1px solid var(--line)}}
+</style>
+</head>
+<body>
+<div id="app">
+  <header id="topbar">
+    <h1 id="pageTitle">今日</h1>
+    <div class="sub" id="pageSub"></div>
+  </header>
+  <main id="view"></main>
+</div>
+<nav id="tabbar"><div class="bar" id="tabBar"></div></nav>
+<div id="mask"></div>
+<div id="sheet"><div class="grab"></div><div id="sheetBody"></div></div>
+<div id="toast"></div>
+<script>
+"use strict";
+/* ============ 工具 ============ */
+const $=(s,r=document)=>r.querySelector(s);
+const $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const todayStr=()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");};
+const fmtDate=s=>{const[d,m]=s.split("-").slice(1);return d+"月"+m+"日";};
+const weekdayCN=["周日","周一","周二","周三","周四","周五","周六"];
+const nowWeekday=()=>weekdayCN[new Date().getDay()];
+const WEEK_KEYS=["mon","tue","wed","thu","fri","sat","sun"];
+const WEEK_CN={mon:"周一",tue:"周二",wed:"周三",thu:"周四",fri:"周五",sat:"周六",sun:"周日"};
+/* 重量单位：内部一律存 kg，界面按单位换算显示 */
+const unit=()=>state&&state.profile&&state.profile.unit||"kg";
+const isJin=()=>unit()==="jin";
+const fromKg=kg=>isJin()?Math.round(Number(kg)*20)/10:Math.round(Number(kg)*10)/10;
+const toKg=v=>isJin()?Number(v)/2:Number(v);
+const fmtW=kg=>isJin()?fromKg(kg)+"斤":fromKg(kg)+"kg";
+const UNAME=()=>isJin()?"斤":"kg";
+function toast(msg){const t=$("#toast");t.textContent=msg;t.classList.add("show");clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove("show"),1800);}
+function openSheet(html){$("#sheetBody").innerHTML=html;$("#sheet").classList.add("show");$("#mask").classList.add("show");}
+function closeSheet(){$("#sheet").classList.remove("show");$("#mask").classList.remove("show");}
+$("#mask").addEventListener("click",closeSheet);
+/* ============ 数据层 ============ */
+const KEY="fitlog_v1";
+const GROUPS=["胸","腿","背","肩","腹","有氧"];
+const DEFAULT_EXERCISES=[
+ ["上斜推胸","胸"],["平板卧推","胸"],["器械夹胸","胸"],["绳索下压","胸"],
+ ["倒蹬机","腿"],["杠铃下蹲","腿"],["腿伸展","腿"],["腿弯举","腿"],["提踵","腿"],
+ ["高位下拉","背"],["坐姿划船","背"],["辅助引体","背"],["哑铃弯举","背"],
+ ["坐姿肩推","肩"],["哑铃侧平举","肩"],["反向飞鸟","肩"],
+ ["卷腹机","腹"],["抬腿","腹"],["仰卧起坐","腹"],
+ ["爬楼机","有氧"],["羽毛球","有氧"],["快走","有氧"]
+];
+const DEFAULT_PLAN={mon:"胸+三头 · 爬楼机20′",tue:"腿 · 爬楼机15′慢速",wed:"背+二头 · 爬楼机20′",thu:"肩+腹 · 爬楼机20′",fri:"休息",sat:"羽毛球 1-2h",sun:"爬楼机30′ + 拉伸"};
+function defaultState(){
+  return {exercises:DEFAULT_EXERCISES.map((e,i)=>({id:"b"+i,name:e[0],group:e[1],builtin:true})),
+    logs:[],meals:{},weights:[],lastUsed:{},plan:Object.assign({},DEFAULT_PLAN),profile:{height:173,weight0:73.4,targetProtein:120,unit:"kg"}};
+}
+let state;
+function load(){try{const raw=localStorage.getItem(KEY);if(raw){state=JSON.parse(raw);state.exercises=state.exercises||defaultState().exercises;state.logs=state.logs||[];state.meals=state.meals||{};state.weights=state.weights||[];state.lastUsed=state.lastUsed||{};state.plan=Object.assign({},DEFAULT_PLAN,state.plan||{});state.profile=Object.assign({},defaultState().profile,state.profile||{});return;}}catch(e){}state=defaultState();}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){toast("存储失败："+e.message);}}
+function exById(id){return state.exercises.find(e=>e.id===id);}
+function logsOf(exId){return state.logs.filter(l=>l.exId===exId).sort((a,b)=>a.date<b.date?-1:1);}
+function maxKg(log){return log.sets.reduce((m,s)=>Math.max(m,Number(s.kg)||0),0);}
+function todayMeal(){return state.meals[todayStr()]||{b:false,l:false,d:false,s:false,protein:0};}
+/* ============ 路由 ============ */
+const VIEWS={today:renderToday,train:renderTrain,exercises:renderExercises,diet:renderDiet,me:renderMe};
+const TABS=[
+ ["today","今日","<path d='M4 6h16M4 12h16M4 18h10'/>"],
+ ["train","训练","<path d='M4 9v6M2 10.5v3M22 10.5v3M20 9v6M4 12h16'/>"],
+ ["exercises","动作","<path d='M6 5v14M4 8v8M20 8v8M18 5v14M6 12h12'/>"],
+ ["diet","饮食","<circle cx='12' cy='12' r='8'/><path d='M12 8v8M9 12h6'/>"],
+ ["me","我的","<circle cx='12' cy='8' r='4'/><path d='M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6'/>"]
+];
+function router(){
+  const h=location.hash.replace("#/","")||"today";
+  const key=VIEWS[h]?h:"today";
+  VIEWS[key]();
+  renderTabs(key);
+  window.scrollTo(0,0);
+}
+function renderTabs(active){
+  $("#tabBar").innerHTML=TABS.map(([k,n,ic])=>
+    `<button data-tab="${k}" class="${k===active?"active":""}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${ic}</svg>${n}</button>`).join("");
+  $$("#tabBar button").forEach(b=>b.onclick=()=>{location.hash="#/"+b.dataset.tab;});
+}
+function setTitle(t,sub){$("#pageTitle").textContent=t;$("#pageSub").textContent=sub||"";}
+window.addEventListener("hashchange",router);
+/* ============ 视图：今日 ============ */
+function renderToday(){
+  setTitle("今日","减脂增肌 · 周五休息 · 食堂30元版");
+  const wk=WEEK_KEYS[new Date().getDay()];
+  const plan=state.plan[wk];
+  const t=todayStr();
+  const todaysLogs=state.logs.filter(l=>l.date===t);
+  const totSets=todaysLogs.reduce((n,l)=>n+l.sets.length,0);
+  const ml=todayMeal();
+  const mealDone=[ml.b,ml.l,ml.d,ml.s].filter(Boolean).length;
+  const pct=Math.min(100,Math.round(ml.protein/state.profile.targetProtein*100));
+  $("#view").innerHTML=`
+  <div class="today-hero">
+    <div class="day">${weekdayCN[new Date().getDay()]} ${t}</div>
+    <div class="plan">${esc(plan)}</div>
+    <div class="meta">${wk==="fri"?"今天是完整休息日，不碰器械":(wk==="sat"||wk==="sun")?"今天是活动日，注意补水":"11:00 健身房 · 先力量后有氧"}</div>
+  </div>
+  <div class="card">
+    <h3>今日训练 <span class="tag" id="todayDone">${todaysLogs.length?"已记录 "+totSets+" 组":"未记录"}</span></h3>
+    ${todaysLogs.length?todaysLogs.map(logRender).join(""):`<div class="muted">今天还没记录训练。练完点下面按钮，选动作填重量。</div>`}
+    <div style="margin-top:10px"><button class="btn btn-main" id="addLogBtn">记录今日训练</button></div>
+  </div>
+  <div class="card">
+    <h3>今日饮食 <span class="tag">蛋白 ${ml.protein}/${state.profile.targetProtein}g</span></h3>
+    <div class="meal-grid">
+      ${[["b","早"],["l","午"],["d","晚"],["s","加"]].map(([k,n])=>`<div class="meal-item ${ml[k]?"on":""}" data-meal="${k}"><div class="dot"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></div><div class="nm">${n}餐</div></div>`).join("")}
+    </div>
+    <div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div>
+    <div class="row spread" style="margin-top:12px">
+      <span class="muted">蛋白快捷 +</span>
+      <span class="row">
+        <button class="btn btn-sm btn-soft" data-pro="10">+10g</button>
+        <button class="btn btn-sm btn-soft" data-pro="20">+20g</button>
+        <button class="btn btn-sm btn-line" id="proCustom">自定义</button>
+      </span>
+    </div>
+  </div>`;
+  $$("#view .meal-item").forEach(el=>el.onclick=()=>{
+    const k=el.dataset.meal;const m=todayMeal();m[k]=!m[k];state.meals[t]=m;save();renderToday();
+  });
+  $$("#view [data-pro]").forEach(el=>el.onclick=()=>{
+    const m=todayMeal();m.protein=Math.max(0,(m.protein||0)+Number(el.dataset.pro));state.meals[t]=m;save();toast("已记录 +"+el.dataset.pro+"g 蛋白");renderToday();
+  });
+  $("#proCustom").onclick=()=>{
+    openSheet(`<h2>记录蛋白质</h2><label class="fld">今天已摄入蛋白质（克）</label><input type="number" id="proInput" min="0" max="300" value="${ml.protein}" inputmode="decimal"><div style="margin-top:14px"><button class="btn btn-main" id="proSave">保存</button></div>`);
+    setTimeout(()=>$("#proInput").focus(),150);
+    $("#proSave").onclick=()=>{const m=todayMeal();m.protein=Math.max(0,Number($("#proInput").value)||0);state.meals[t]=m;save();closeSheet();renderToday();};
+  };
+  $("#addLogBtn").onclick=openLogForm;
+}
+/* ============ 训练记录卡片 ============ */
+function logRender(l){
+  const ex=exById(l.exId);
+  const kg=maxKg(l);
+  return `<div class="log-card">
+    <div class="top">
+      <div class="exname">${ex?esc(ex.name):"已删除动作"} <span class="tag" style="margin-left:4px">${ex?esc(ex.group):""}</span></div>
+      <span class="muted">${fmtDate(l.date)}</span>
+    </div>
+    <div class="sets">${l.sets.length} 组 · 最大重量 <b style="color:var(--main)">${fmtW(kg)}</b>${l.note?` · ${esc(l.note)}`:""}</div>
+    <div class="set-line">${l.sets.map(s=>`<span class="set-chip">${fromKg(s.kg)}×${s.reps}</span>`).join("")}</div>
+    <div class="row spread" style="margin-top:6px">
+      <button class="mini-btn" data-curve="${l.exId}">看进步</button>
+      <button class="mini-btn" data-del="${l.id}" style="color:var(--danger)">删除</button>
+    </div>
+  </div>`;
+}
+function bindLogActions(){
+  $$("#view [data-del]").forEach(b=>b.onclick=()=>{
+    const id=b.dataset.del;
+    if(!confirm("删除这条训练记录？"))return;
+    state.logs=state.logs.filter(l=>l.id!==id);save();router();toast("已删除");
+  });
+  $$("#view [data-curve]").forEach(b=>b.onclick=()=>showCurve(b.dataset.curve));
+}
+/* ============ 视图：训练 ============ */
+function renderTrain(){
+  setTitle("训练","记录每一次重量，进步看得见");
+  const groups={};
+  state.logs.slice().sort((a,b)=>a.date<b.date?1:-1).forEach(l=>{(groups[l.date]=groups[l.date]||[]).push(l);});
+  const keys=Object.keys(groups);
+  $("#view").innerHTML=`
+  <div style="margin-bottom:12px"><button class="btn btn-main" id="trainAdd">＋ 记录训练</button></div>
+  ${keys.length?keys.map(d=>`
+    <div class="muted" style="font-weight:700;margin:14px 0 6px">${d} ${nowWeekday()}${d===todayStr()?"（今天）":""}</div>
+    ${groups[d].map(logRender).join("")}
+  `).join(""):`<div class="empty"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round"><path d="M4 9v6M2 10.5v3M22 10.5v3M20 9v6M4 12h16"/></svg>还没有训练记录<br>练完第一组，点上面按钮开始记录</div>`}`;
+  $("#trainAdd").onclick=openLogForm;
+  bindLogActions();
+}
+/* ============ 训练记录表单 ============ */
+let formSets=[{kg:"",reps:""}];
+function openLogForm(preExId){
+  const t=todayStr();
+  const exs=state.exercises;
+  openSheet(`
+    <h2>记录训练</h2>
+    <label class="fld">日期</label>
+    <input type="date" id="logDate" value="${t}" max="${t}">
+    <label class="fld">动作</label>
+    <div class="ex-pick" id="exPick"></div>
+    <div id="lastHint"></div>
+    <div class="row spread" style="margin-top:10px">
+      <span style="font-size:13px;font-weight:700;color:var(--ink2)">组数（点片重快捷填入，可连点累加）</span>
+      <span class="row" id="unitPick">
+        <button class="pill ${!isJin()?"active":""}" data-u="kg" style="padding:3px 10px">kg</button>
+        <button class="pill ${isJin()?"active":""}" data-u="jin" style="padding:3px 10px">斤</button>
+      </span>
+    </div>
+    <div class="sets-rows" id="setsRows"></div>
+    <button class="btn btn-soft" id="addSet" style="width:100%;margin-top:4px">＋ 加一组</button>
+    <label class="fld">备注（可选）</label>
+    <input type="text" id="logNote" placeholder="比如：状态不错 / 最后两组力竭">
+    <div style="margin-top:16px;display:flex;gap:10px">
+      <button class="btn btn-line" style="flex:1" id="cancelLog">取消</button>
+      <button class="btn btn-main" style="flex:2" id="saveLog">保存记录</button>
+    </div>`);
+  let picked=preExId||exs[0].id;
+  const pickEl=$("#exPick");
+  const hintEl=$("#lastHint");
+  const rowsEl=$("#setsRows");
+  const updateHint=()=>{
+    const lu=state.lastUsed&&state.lastUsed[picked];
+    hintEl.innerHTML=lu?`<span class="tag" style="margin-top:6px">上次 ${fmtW(lu.kg)}×${lu.reps} 已自动填入，可直接改或加组</span>`:"";
+  };
+  const fillFromLast=(exId)=>{
+    const lu=state.lastUsed&&state.lastUsed[exId];
+    formSets=lu?[{kg:lu.kg,reps:lu.reps}]:[{kg:"",reps:""}];
+    updateHint();
+  };
+  const renderPicks=()=>{
+    pickEl.innerHTML=exs.map(e=>`<button class="pill ${e.id===picked?"active":""}" data-ex="${e.id}">${esc(e.name)}<span style="font-size:11px;opacity:.7"> ${e.group}</span></button>`).join("");
+    $$("#exPick .pill").forEach(p=>p.onclick=()=>{picked=p.dataset.ex;fillFromLast(picked);renderPicks();renderSets();});
+  };
+  const renderSets=()=>{
+    const PLATES=isJin()?[45,35,25,20,15,10,5]:[45,25,20,15,10,5,2.5];
+    rowsEl.innerHTML=formSets.map((s,i)=>`
+      <div class="set-row">
+        <div class="idx">${i+1}</div>
+        <input type="number" inputmode="decimal" placeholder="${UNAME()}" value="${s.kg===""?"":fromKg(s.kg)}" data-i="${i}" data-k="kg" step="0.5" min="0">
+        <input type="number" inputmode="numeric" placeholder="次" value="${s.reps}" data-i="${i}" data-k="reps" step="1" min="0">
+        ${formSets.length>1?`<button class="del-set" data-i="${i}">×</button>`:`<span></span>`}
+      </div>
+      <div class="plate-line">
+        <button class="plate plate-down" data-i="${i}" data-p="10">-10</button>
+        <button class="plate plate-down" data-i="${i}" data-p="5">-5</button>
+        <span style="width:1px;height:18px;background:var(--line);margin:0 3px"></span>
+        ${PLATES.map(p=>`<button class="plate plate-add" data-i="${i}" data-p="${p}">+${p}</button>`).join("")}
+      </div>
+      <div class="rep-line"><span class="rep-label">次</span>${[8,9,10,11,12,13,14,15].map(r=>`<button class="rep-quick" data-i="${i}" data-r="${r}">${r}</button>`).join("")}</div>`).join("");
+    $$("#setsRows input").forEach(inp=>inp.oninput=()=>{
+      const s=formSets[Number(inp.dataset.i)];
+      if(inp.dataset.k==="kg"){s.kg=inp.value===""?"":toKg(inp.value);}
+      else{s.reps=inp.value;}
+    });
+    $$("#setsRows .del-set").forEach(b=>b.onclick=()=>{formSets.splice(Number(b.dataset.i),1);renderSets();});
+    $$("#setsRows .plate-down").forEach(b=>b.onclick=()=>{
+      const i=Number(b.dataset.i),p=Number(b.dataset.p);
+      const subKg=isJin()?p/2:p;
+      formSets[i].kg=Math.max(0,Math.round(((Number(formSets[i].kg)||0)-subKg)*10)/10);
+      renderSets();
+    });
+    $$("#setsRows .rep-quick").forEach(b=>b.onclick=()=>{
+      formSets[Number(b.dataset.i)].reps=b.dataset.r;
+      renderSets();
+    });
+    $$("#setsRows .plate-add").forEach(b=>b.onclick=()=>{
+      const i=Number(b.dataset.i),p=Number(b.dataset.p);
+      const addKg=isJin()?p/2:p;
+      formSets[i].kg=Math.round(((Number(formSets[i].kg)||0)+addKg)*10)/10;
+      renderSets();
+    });
+  };
+  renderPicks();
+  fillFromLast(picked);
+  renderSets();
+  $$("#unitPick .pill").forEach(p=>p.onclick=()=>{
+    state.profile.unit=p.dataset.u;save();
+    $$("#unitPick .pill").forEach(x=>x.classList.toggle("active",x===p));
+    updateHint();renderSets();
+  });
+  $("#addSet").onclick=()=>{
+    const last=formSets[formSets.length-1]||{kg:"",reps:""};
+    formSets.push({kg:last.kg,reps:last.reps});
+    renderSets();
+  };
+  $("#cancelLog").onclick=closeSheet;
+  $("#saveLog").onclick=()=>{
+    const date=$("#logDate").value||t;
+    const validSets=formSets.filter(s=>Number(s.kg)>0&&Number(s.reps)>0);
+    if(!validSets.length){toast("至少填一组有效的重量×次数");return;}
+    const best=validSets.slice().sort((a,b)=>Number(b.kg)-Number(a.kg))[0];
+    state.lastUsed=state.lastUsed||{};
+    state.lastUsed[picked]={kg:Number(best.kg),reps:Number(best.reps)};
+    state.logs.push({id:uid(),date,exId:picked,sets:validSets.map(s=>({kg:Number(s.kg),reps:Number(s.reps)})),note:$("#logNote").value.trim()});
+    formSets=[{kg:"",reps:""}];
+    save();closeSheet();router();toast("已保存，继续加油");
+  };
+}
+/* ============ 进步曲线 ============ */
+function showCurve(exId){
+  const ex=exById(exId);
+  if(!ex)return;
+  const logs=logsOf(exId);
+  openSheet(`<h2>${esc(ex.name)} · 进步曲线（${UNAME()}）</h2>
+    <div class="curve-wrap">${logs.length<2?`<div class="empty" style="padding:20px 6px">至少记录 2 次训练才能画曲线<br><span class="muted">现在有 ${logs.length} 次</span></div>`:curveSVG(ex,logs)}</div>
+    ${logs.length?`<div class="muted" style="margin-bottom:6px">历史记录</div><div class="his-list">${logs.slice().reverse().map(l=>`<div class="his-item"><span>${fmtDate(l.date)} · ${l.sets.length}组</span><b style="color:var(--main)">${fmtW(maxKg(l))}</b></div>`).join("")}</div>`:""}
+    ${ex.builtin?"":`<div style="margin-top:14px"><button class="btn btn-danger" id="delEx">删除该动作（保留历史记录）</button></div>`}`);
+  const de=$("#delEx");
+  if(de)de.onclick=()=>{state.exercises=state.exercises.filter(e=>e.id!==exId);save();closeSheet();renderExercises();toast("动作已删除");};
+}
+function curveSVG(ex,logs){
+  const pts=logs.map(l=>({x:l.date,y:maxKg(l)}));
+  const W=460,H=180,P=34;
+  const ys=pts.map(p=>p.y);
+  const yMin=Math.min(...ys),yMax=Math.max(...ys);
+  const span=(yMax-yMin)||1;
+  const x0=P,y0=H-P,x1=W-P,y1=P;
+  const X=i=>pts.length>1?x0+(x1-x0)*i/(pts.length-1):(x0+x1)/2;
+  const Y=v=>y1+(y0-y1)*(1-(v-yMin)/span);
+  const line2=pts.map((p,i)=>{const x=X(i),y=Y(p.y);return (i?"L":"M")+x.toFixed(1)+" "+y.toFixed(1);}).join(" ");
+  const dots=pts.map((p,i)=>{const x=X(i),y=Y(p.y);return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="5" fill="#fff" stroke="#1F6E4A" stroke-width="2.5"/><text x="${x.toFixed(1)}" y="${(y-11).toFixed(1)}" text-anchor="middle" font-size="12" fill="#174F36" font-weight="700">${fromKg(p.y)}</text>`;}).join("");
+  const grid=[0,0.25,0.5,0.75,1].map(f=>{const gv=yMin+span*f;const y=Y(gv);return `<line x1="${x0}" y1="${y}" x2="${x1}" y2="${y}" stroke="#E6EBE7" stroke-dasharray="3 4"/><text x="${x0-6}" y="${y+4}" text-anchor="end" font-size="11" fill="#8A9792">${fromKg(gv)}</text>`;}).join("");
+  const xl=pts.length>1?pts.map((p,i)=>`<text x="${X(i)}" y="${H-8}" text-anchor="middle" font-size="10" fill="#8A9792">${fmtDate(p.x)}</text>`).join(""):"";
+  return `<svg viewBox="0 0 ${W} ${H}" class="curve-svg" role="img" aria-label="${esc(ex.name)} 最大重量变化">
+    ${grid}
+    <polyline points="${line2}" fill="none" stroke="#1F6E4A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    ${dots}${xl}
+  </svg>`;
+}
+/* ============ 视图：动作库 ============ */
+let exFilter="全部";
+function renderExercises(){
+  setTitle("动作库","内置 + 自定义，随时添加新器械");
+  const groupsList=exFilter==="全部"?GROUPS:[exFilter];
+  const all=groupsList.map(g=>state.exercises.filter(e=>e.group===g)).flat();
+  $("#view").innerHTML=`
+  <div class="chip-line">${["全部",...GROUPS].map(g=>`<button class="pill ${g===exFilter?"active":""}" data-g="${g}">${g}</button>`).join("")}</div>
+  <div style="margin:10px 0"><button class="btn btn-soft" id="addExBtn">＋ 添加自定义动作</button></div>
+  ${all.length?groupsList.map(g=>{const es=state.exercises.filter(e=>e.group===g);
+    if(!es.length)return "";
+    return `<div class="ex-group">${g}</div>${es.map(e=>{
+      const ls=logsOf(e.id);const best=ls.length?Math.max(...ls.map(maxKg)):null;
+      return `<div class="ex-item" data-ex="${e.id}"><div><div class="nm">${esc(e.name)}</div><div class="info">${ls.length?`记录 ${ls.length} 次 · 最佳 ${fmtW(best)}`:"还没练过"}</div></div><span class="muted">›</span></div>`;}).join("")}`;}).join(""):`<div class="empty">这个部位还没有动作</div>`}`;
+  $$("#view .pill").forEach(p=>p.onclick=()=>{exFilter=p.dataset.g;renderExercises();});
+  $$("#view .ex-item").forEach(el=>el.onclick=()=>showCurve(el.dataset.ex));
+  $("#addExBtn").onclick=openExForm;
+}
+function openExForm(){
+  openSheet(`<h2>添加动作</h2>
+    <label class="fld">动作名称</label><input type="text" id="exName" placeholder="比如：龙门架夹胸" maxlength="20">
+    <label class="fld">部位</label>
+    <div class="ex-pick" id="exGroupPick"></div>
+    <div style="margin-top:16px;display:flex;gap:10px">
+      <button class="btn btn-line" style="flex:1" id="cancelEx">取消</button>
+      <button class="btn btn-main" style="flex:2" id="saveEx">添加</button>
+    </div>`);
+  let g="胸";
+  const pick=$("#exGroupPick");
+  const rp=()=>{pick.innerHTML=GROUPS.map(x=>`<button class="pill ${x===g?"active":""}" data-g="${x}">${x}</button>`).join("");
+    $$("#exGroupPick .pill").forEach(p=>p.onclick=()=>{g=p.dataset.g;rp();});};
+  rp();
+  $("#cancelEx").onclick=closeSheet;
+  $("#saveEx").onclick=()=>{
+    const name=$("#exName").value.trim();
+    if(!name){toast("先填动作名称");return;}
+    if(state.exercises.some(e=>e.name===name&&e.group===g)){toast("这个动作已经存在");return;}
+    state.exercises.push({id:uid(),name,group:g,builtin:false});
+    save();closeSheet();renderExercises();toast("已添加："+name);
+  };
+}
+/* ============ 视图：饮食 ============ */
+function renderDiet(){
+  setTitle("饮食","目标 120g 蛋白 · 食堂 30 元版");
+  const t=todayStr();
+  const ml=todayMeal();
+  const pct=Math.min(100,Math.round(ml.protein/state.profile.targetProtein*100));
+  const week=[];for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);const k=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");week.push({k,d,mm:state.meals[k]||{protein:0}});}
+  const wmax=Math.max(1,...week.map(w=>w.mm.protein));
+  $("#view").innerHTML=`
+  <div class="card" style="background:var(--main);border-color:var(--main);color:#fff">
+    <div class="row spread"><span style="font-size:14px;opacity:.9">今日蛋白质</span><span style="font-size:13px;opacity:.8">目标 ${state.profile.targetProtein}g</span></div>
+    <div style="font-size:38px;font-weight:800;line-height:1.2">${ml.protein}<span style="font-size:16px;font-weight:600;opacity:.8"> g</span></div>
+    <div class="progress-track" style="background:rgba(255,255,255,.22)"><div class="progress-fill" style="background:#fff;width:${pct}%"></div></div>
+  </div>
+  <div class="card">
+    <h3>三餐打卡</h3>
+    <div class="meal-grid">
+      ${[["b","早"],["l","午"],["d","晚"],["s","加"]].map(([k,n])=>`<div class="meal-item ${ml[k]?"on":""}" data-meal="${k}"><div class="dot"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg></div><div class="nm">${n}餐</div></div>`).join("")}
+    </div>
+    <div class="muted" style="margin-top:10px">晚餐必须吃：一荤一素+米饭，别只喝牛奶。</div>
+  </div>
+  <div class="card">
+    <h3>蛋白质记录</h3>
+    <div class="row spread">
+      <button class="btn btn-sm btn-soft" data-pro="10">+10g</button>
+      <button class="btn btn-sm btn-soft" data-pro="20">+20g</button>
+      <button class="btn btn-sm btn-soft" data-pro="30">+30g</button>
+      <button class="btn btn-sm btn-line" id="proCustom2">自定义</button>
+      <button class="btn btn-sm btn-line" id="proReset">清零</button>
+    </div>
+    <div class="muted" style="margin-top:8px">参考：鸡蛋 6g/个 · 豆浆 ~7g/杯 · 鸡胸 25g/100g · 豆腐 7g/100g</div>
+  </div>
+  <div class="card">
+    <h3>近 7 天蛋白</h3>
+    <div style="display:flex;align-items:flex-end;gap:6px;height:90px;padding-top:6px">
+      ${week.map(w=>{const h=Math.max(4,Math.round(w.mm.protein/wmax*72));const on=w.d.getDay()===new Date().getDay();return `<div style="flex:1;text-align:center"><div style="background:${w.mm.protein>=state.profile.targetProtein?"#1F8A5B":on?"#1F6E4A":"#C9D4CE"};height:${h}px;border-radius:6px 6px 2px 2px;min-height:4px"></div><div style="font-size:10px;color:var(--ink3);margin-top:4px">${w.k.slice(5).replace("-","/")}</div></div>`;}).join("")}
+    </div>
+  </div>`;
+  $$("#view .meal-item").forEach(el=>el.onclick=()=>{
+    const k=el.dataset.meal;const m=todayMeal();m[k]=!m[k];state.meals[t]=m;save();renderDiet();
+  });
+  $$("#view [data-pro]").forEach(el=>el.onclick=()=>{
+    const m=todayMeal();m.protein=Math.max(0,(m.protein||0)+Number(el.dataset.pro));state.meals[t]=m;save();toast("+ "+el.dataset.pro+"g 蛋白");renderDiet();
+  });
+  $("#proCustom2").onclick=()=>{
+    openSheet(`<h2>记录蛋白质</h2><label class="fld">今天已摄入蛋白质（克）</label><input type="number" id="proInput2" min="0" max="300" value="${ml.protein}" inputmode="decimal"><div style="margin-top:14px"><button class="btn btn-main" id="proSave2">保存</button></div>`);
+    setTimeout(()=>$("#proInput2").focus(),150);
+    $("#proSave2").onclick=()=>{const m=todayMeal();m.protein=Math.max(0,Number($("#proInput2").value)||0);state.meals[t]=m;save();closeSheet();renderDiet();};
+  };
+  $("#proReset").onclick=()=>{if(!confirm("把今天的蛋白记录清零？"))return;const m=todayMeal();m.protein=0;state.meals[t]=m;save();renderDiet();};
+}
+/* ============ 视图：我的 ============ */
+function renderMe(){
+  setTitle("我的","数据都保存在手机本地");
+  const ws=state.weights.slice().sort((a,b)=>a.date<b.date?-1:1);
+  const totalLogs=state.logs.length;
+  const totalSets=state.logs.reduce((n,l)=>n+l.sets.length,0);
+  $("#view").innerHTML=`
+  <div class="me-note">想装成 App：手机浏览器打开本文件 → 右上角菜单 → 「添加到主屏幕」/「安装应用」，之后从桌面图标进入，全屏使用。</div>
+  <div class="card">
+    <h3>进度概览</h3>
+    <div class="me-item"><div class="k">训练记录</div><div class="v">${totalLogs} 次 · ${totalSets} 组</div></div>
+    <div class="me-item"><div class="k">自定义动作</div><div class="v">${state.exercises.filter(e=>!e.builtin).length} 个</div></div>
+    ${ws.length?`<div class="me-item"><div class="k">起始 / 最近体重</div><div class="v">${fmtW(ws[0].kg)} → ${fmtW(ws[ws.length-1].kg)}</div></div>`:""}
+  </div>
+  <div class="card">
+    <h3>重量单位</h3>
+    <div class="muted" style="margin-bottom:8px">训练重量与体重的显示单位。切换只改显示，历史数据自动换算，不会弄乱。</div>
+    <div class="row" id="meUnit">
+      <button class="btn btn-sm ${!isJin()?"btn-main":"btn-line"}" data-u="kg" style="flex:1">公斤 kg</button>
+      <button class="btn btn-sm ${isJin()?"btn-main":"btn-line"}" data-u="jin" style="flex:1">斤</button>
+    </div>
+  </div>
+  <div class="card">
+    <h3>体重记录</h3>
+    ${ws.length?ws.slice(-14).map(w=>`<div class="his-item"><span class="d">${w.date}</span><b style="color:var(--main)">${fmtW(w.kg)}</b></div>`).join(""):`<div class="muted">每周一早上空腹称一次，减脂期看趋势不看单日。</div>`}
+    <div style="margin-top:10px"><button class="btn btn-soft" id="addWeightBtn2" style="width:100%">记录体重</button></div>
+  </div>
+  <div class="card">
+    <h3>周计划模板</h3>
+    <div class="muted" style="margin-bottom:8px">每天 11:00 该练什么，可自由修改。</div>
+    ${WEEK_KEYS.map(k=>`<div class="week-edit"><div class="d">${WEEK_CN[k]}</div><input type="text" data-wk="${k}" value="${esc(state.plan[k])}" maxlength="24"></div>`).join("")}
+    <button class="btn btn-main" id="savePlan">保存周计划</button>
+  </div>
+  <div class="card">
+    <h3>数据</h3>
+    <div class="row" style="gap:8px;flex-wrap:wrap">
+      <button class="btn btn-sm btn-soft" id="exportBtn">导出数据</button>
+      <button class="btn btn-sm btn-danger" id="resetBtn">清空所有数据</button>
+    </div>
+    <div class="muted" style="margin-top:8px">导出会生成一个 JSON 备份文件；清空不可恢复。</div>
+  </div>`;
+  $("#addWeightBtn2").onclick=openWeightForm;
+  $$("#meUnit .btn").forEach(b=>b.onclick=()=>{
+    state.profile.unit=b.dataset.u;save();toast("重量单位已切换为"+(b.dataset.u==="jin"?"斤":"公斤"));renderMe();
+  });
+  $("#savePlan").onclick=()=>{
+    $$("#view .week-edit input").forEach(inp=>{state.plan[inp.dataset.wk]=inp.value.trim()||"休息";});
+    save();toast("周计划已保存");
+  };
+  $("#exportBtn").onclick=()=>{
+    const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
+    const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="健身记录备份-"+todayStr()+".json";a.click();
+    URL.revokeObjectURL(a.href);toast("已导出备份文件");
+  };
+  $("#resetBtn").onclick=()=>{
+    if(!confirm("确定清空全部训练、饮食、体重数据？此操作不可恢复！"))return;
+    if(!confirm("再次确认：真的要全部清空吗？"))return;
+    state=defaultState();save();router();toast("已清空");
+  };
+}
+function openWeightForm(){
+  const mn=isJin()?60:30,mx=isJin()?400:200;
+  openSheet(`<h2>记录体重</h2>
+    <label class="fld">日期</label><input type="date" id="wDate" value="${todayStr()}" max="${todayStr()}">
+    <label class="fld">体重（${UNAME()}）</label><input type="number" id="wKg" step="0.1" min="${mn}" max="${mx}" placeholder="如 ${isJin()?"146.7":"73.4"}" inputmode="decimal">
+    <div style="margin-top:14px"><button class="btn btn-main" id="wSave">保存</button></div>`);
+  setTimeout(()=>$("#wKg").focus(),150);
+  $("#wSave").onclick=()=>{
+    const v=Number($("#wKg").value);
+    if(!v||v<mn||v>mx){toast("体重数值不对");return;}
+    const kg=Math.round(toKg(v)*10)/10;
+    const date=$("#wDate").value;
+    state.weights=state.weights.filter(w=>w.date!==date);
+    state.weights.push({date,kg});
+    save();closeSheet();router();toast("已记录 "+fmtW(kg));
+  };
+}
+/* ============ 初始化 ============ */
+load();
+router();
+/* 注册离线缓存（仅 https 环境生效；本地 file:// 打开时自动跳过，不影响使用） */
+if("serviceWorker" in navigator && location.protocol.indexOf("http")===0){
+  navigator.serviceWorker.register("sw.js").catch(function(){});
+}
+/*__MORE__*/
+</script>
+</body>
+</html>
