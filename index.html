@@ -175,17 +175,21 @@ const DEFAULT_EXERCISES=[
  ["卷腹机","腹"],["抬腿","腹"],["仰卧起坐","腹"],
  ["爬楼机","有氧"],["羽毛球","有氧"],["快走","有氧"]
 ];
-const DEFAULT_PLAN={mon:"胸+三头 · 爬楼机20′",tue:"腿 · 爬楼机15′慢速",wed:"背+二头 · 爬楼机20′",thu:"肩+腹 · 爬楼机20′",fri:"休息",sat:"羽毛球 1-2h",sun:"爬楼机30′ + 拉伸"};
+const DEFAULT_PLAN={mon:"胸+三头 · 爬楼机30′",tue:"腿 · 爬楼机30′",wed:"背+二头 · 爬楼机30′",thu:"肩+腹 · 爬楼机30′",fri:"休息",sat:"上肢循环+羽毛球1-2h",sun:"腿+核心 · 爬楼机30′"};
 function defaultState(){
   return {exercises:DEFAULT_EXERCISES.map((e,i)=>({id:"b"+i,name:e[0],group:e[1],builtin:true})),
     logs:[],meals:{},weights:[],lastUsed:{},plan:Object.assign({},DEFAULT_PLAN),profile:{height:173,weight0:73.4,targetProtein:120,unit:"kg"}};
 }
 let state;
-function load(){try{const raw=localStorage.getItem(KEY);if(raw){state=JSON.parse(raw);state.exercises=state.exercises||defaultState().exercises;state.logs=state.logs||[];state.meals=state.meals||{};state.weights=state.weights||[];state.lastUsed=state.lastUsed||{};state.plan=Object.assign({},DEFAULT_PLAN,state.plan||{});state.profile=Object.assign({},defaultState().profile,state.profile||{});return;}}catch(e){}state=defaultState();}
+function load(){try{const raw=localStorage.getItem(KEY);if(raw){state=JSON.parse(raw);state.exercises=state.exercises||defaultState().exercises;state.logs=state.logs||[];state.meals=state.meals||{};state.weights=state.weights||[];state.lastUsed=state.lastUsed||{};state.plan=Object.assign({},DEFAULT_PLAN,state.plan||{});
+      if(!state.plan.__v||state.plan.__v<2){state.plan=Object.assign({},DEFAULT_PLAN);state.plan.__v=2;}state.profile=Object.assign({},defaultState().profile,state.profile||{});return;}}catch(e){}state=defaultState();}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){toast("存储失败："+e.message);}}
 function exById(id){return state.exercises.find(e=>e.id===id);}
 function logsOf(exId){return state.logs.filter(l=>l.exId===exId).sort((a,b)=>a.date<b.date?-1:1);}
 function maxKg(log){return log.sets.reduce((m,s)=>Math.max(m,Number(s.kg)||0),0);}
+function maxMin(log){return log.sets.reduce((m,s)=>Math.max(m,Number(s.min)||0),0);}
+function sumMin(log){return log.sets.reduce((m,s)=>m+(Number(s.min)||0),0);}
+function isCardio(ex){return !!(ex&&ex.group==="有氧");}
 function todayMeal(){return state.meals[todayStr()]||{b:false,l:false,d:false,s:false,protein:0};}
 /* ============ 路由 ============ */
 const VIEWS={today:renderToday,train:renderTrain,exercises:renderExercises,diet:renderDiet,me:renderMe};
@@ -263,14 +267,15 @@ function renderToday(){
 /* ============ 训练记录卡片 ============ */
 function logRender(l){
   const ex=exById(l.exId);
-  const kg=maxKg(l);
+  const isC=isCardio(ex);
+  const kg=maxKg(l);const mn=sumMin(l);
   return `<div class="log-card">
     <div class="top">
       <div class="exname">${ex?esc(ex.name):"已删除动作"} <span class="tag" style="margin-left:4px">${ex?esc(ex.group):""}</span></div>
       <span class="muted">${fmtDate(l.date)}</span>
     </div>
-    <div class="sets">${l.sets.length} 组 · 最大重量 <b style="color:var(--main)">${fmtW(kg)}</b>${l.note?` · ${esc(l.note)}`:""}</div>
-    <div class="set-line">${l.sets.map(s=>`<span class="set-chip">${fromKg(s.kg)}×${s.reps}</span>`).join("")}</div>
+    <div class="sets">${l.sets.length} 组 · ${isC?`总时长 <b style="color:var(--main)">${mn} 分钟</b>`:`最大重量 <b style="color:var(--main)">${fmtW(kg)}</b>`}${l.note?` · ${esc(l.note)}`:""}</div>
+    <div class="set-line">${isC?l.sets.map(s=>`<span class="set-chip">${s.min}′</span>`).join(""):l.sets.map(s=>`<span class="set-chip">${fromKg(s.kg)}×${s.reps}</span>`).join("")}</div>
     <div class="row spread" style="margin-top:6px">
       <button class="mini-btn" data-curve="${l.exId}">看进步</button>
       <button class="mini-btn" data-del="${l.id}" style="color:var(--danger)">删除</button>
@@ -309,11 +314,11 @@ function openLogForm(preExId){
     <h2>记录训练</h2>
     <label class="fld">日期</label>
     <input type="date" id="logDate" value="${t}" max="${t}">
-    <label class="fld">动作</label>
-    <div class="ex-pick" id="exPick"></div>
+    <label class="fld">动作（按部位分组，点组名可收起/展开）</label>
+    <div id="exPick"></div>
     <div id="lastHint"></div>
     <div class="row spread" style="margin-top:10px">
-      <span style="font-size:13px;font-weight:700;color:var(--ink2)">组数（点片重快捷填入，可连点累加）</span>
+      <span style="font-size:13px;font-weight:700;color:var(--ink2)" id="setHint">组数（点片重快捷填入，可连点累加）</span>
       <span class="row" id="unitPick">
         <button class="pill ${!isJin()?"active":""}" data-u="kg" style="padding:3px 10px">kg</button>
         <button class="pill ${isJin()?"active":""}" data-u="jin" style="padding:3px 10px">斤</button>
@@ -328,23 +333,62 @@ function openLogForm(preExId){
       <button class="btn btn-main" style="flex:2" id="saveLog">保存记录</button>
     </div>`);
   let picked=preExId||exs[0].id;
+  let isC=isCardio(exById(picked));
   const pickEl=$("#exPick");
   const hintEl=$("#lastHint");
+  const hintEl2=$("#setHint");
   const rowsEl=$("#setsRows");
+  const openSet=new Set(exs.map(e=>e.group));
   const updateHint=()=>{
     const lu=state.lastUsed&&state.lastUsed[picked];
-    hintEl.innerHTML=lu?`<span class="tag" style="margin-top:6px">上次 ${fmtW(lu.kg)}×${lu.reps} 已自动填入，可直接改或加组</span>`:"";
+    hintEl.innerHTML=lu?(isC?`<span class="tag" style="margin-top:6px">上次 ${lu.min} 分钟已自动填入，可直接改或加组</span>`:`<span class="tag" style="margin-top:6px">上次 ${fmtW(lu.kg)}×${lu.reps} 已自动填入，可直接改或加组</span>`):"";
   };
   const fillFromLast=(exId)=>{
     const lu=state.lastUsed&&state.lastUsed[exId];
-    formSets=lu?[{kg:lu.kg,reps:lu.reps}]:[{kg:"",reps:""}];
+    const c=isCardio(exById(exId));
+    formSets=lu?(c?[{min:lu.min||""}]:[{kg:lu.kg,reps:lu.reps}]):(c?[{min:""}]:[{kg:"",reps:""}]);
     updateHint();
   };
   const renderPicks=()=>{
-    pickEl.innerHTML=exs.map(e=>`<button class="pill ${e.id===picked?"active":""}" data-ex="${e.id}">${esc(e.name)}<span style="font-size:11px;opacity:.7"> ${e.group}</span></button>`).join("");
-    $$("#exPick .pill").forEach(p=>p.onclick=()=>{picked=p.dataset.ex;fillFromLast(picked);renderPicks();renderSets();});
+    const byG={};exs.forEach(e=>{(byG[e.group]=byG[e.group]||[]).push(e);});
+    pickEl.innerHTML=Object.keys(byG).map(g=>`
+      <div class="ex-group" data-gg="${esc(g)}" style="cursor:pointer;margin-top:10px">${esc(g)}<span style="font-size:11px;color:var(--ink3);font-weight:400">${openSet.has(g)?" · 点击收起":" · 点击展开"}</span></div>
+      <div class="ex-pick" ${openSet.has(g)?"":"style='display:none'"}>${byG[g].map(e=>`<button class="pill ${e.id===picked?"active":""}" data-ex="${e.id}">${esc(e.name)}</button>`).join("")}</div>`).join("");
+    $$("#exPick .ex-group").forEach(h=>h.onclick=()=>{
+      const g=h.dataset.gg;
+      if(openSet.has(g))openSet.delete(g);else openSet.add(g);
+      renderPicks();
+    });
+    $$("#exPick .pill").forEach(p=>p.onclick=()=>{
+      picked=p.dataset.ex;
+      isC=isCardio(exById(picked));
+      fillFromLast(picked);
+      renderPicks();renderSets();
+    });
+    if(state.lastGroup&&openSet.has(state.lastGroup)){
+      const el=$("#exPick .ex-group[data-gg=\""+state.lastGroup+"\"]");
+      if(el)el.scrollIntoView({block:"nearest"});
+    }
   };
   const renderSets=()=>{
+    if(isC){
+      hintEl2.textContent="时长（分钟），支持多组、点快捷键快速填";
+      rowsEl.innerHTML=formSets.map((s,i)=>`
+      <div class="set-row" style="grid-template-columns:44px 1fr 40px">
+        <div class="idx">${i+1}</div>
+        <input type="number" inputmode="numeric" placeholder="分钟" value="${s.min===""||s.min==null?"":s.min}" data-i="${i}" data-k="min" step="1" min="1">
+        ${formSets.length>1?`<button class="del-set" data-i="${i}">×</button>`:`<span></span>`}
+      </div>
+      <div class="rep-line"><span class="rep-label">分钟</span>${[15,20,25,30,40,45,60].map(r=>`<button class="rep-quick" data-i="${i}" data-r="${r}">${r}</button>`).join("")}</div>`).join("");
+      $$("#setsRows input").forEach(inp=>inp.oninput=()=>{
+        const s=formSets[Number(inp.dataset.i)];
+        s.min=inp.value===""?"":Number(inp.value);
+      });
+      $$("#setsRows .rep-quick").forEach(b=>b.onclick=()=>{formSets[Number(b.dataset.i)].min=Number(b.dataset.r);renderSets();});
+      $$("#setsRows .del-set").forEach(b=>b.onclick=()=>{formSets.splice(Number(b.dataset.i),1);renderSets();});
+      return;
+    }
+    hintEl2.textContent="组数（点片重快捷填入，可连点累加）";
     const PLATES=isJin()?[45,35,25,20,15,10,5]:[45,25,20,15,10,5,2.5];
     rowsEl.innerHTML=formSets.map((s,i)=>`
       <div class="set-row">
@@ -392,19 +436,27 @@ function openLogForm(preExId){
     updateHint();renderSets();
   });
   $("#addSet").onclick=()=>{
-    const last=formSets[formSets.length-1]||{kg:"",reps:""};
-    formSets.push({kg:last.kg,reps:last.reps});
+    const last=formSets[formSets.length-1]||{};
+    formSets.push(isC?{min:last.min===""?"":last.min}:{kg:last.kg===""?"":last.kg,reps:last.reps===""?"":last.reps});
     renderSets();
   };
   $("#cancelLog").onclick=closeSheet;
   $("#saveLog").onclick=()=>{
     const date=$("#logDate").value||t;
-    const validSets=formSets.filter(s=>Number(s.kg)>0&&Number(s.reps)>0);
-    if(!validSets.length){toast("至少填一组有效的重量×次数");return;}
-    const best=validSets.slice().sort((a,b)=>Number(b.kg)-Number(a.kg))[0];
-    state.lastUsed=state.lastUsed||{};
-    state.lastUsed[picked]={kg:Number(best.kg),reps:Number(best.reps)};
-    state.logs.push({id:uid(),date,exId:picked,sets:validSets.map(s=>({kg:Number(s.kg),reps:Number(s.reps)})),note:$("#logNote").value.trim()});
+    if(isC){
+      const validSets=formSets.filter(s=>Number(s.min)>0);
+      if(!validSets.length){toast("至少填一组有效的时长（分钟）");return;}
+      state.lastUsed=state.lastUsed||{};
+      state.lastUsed[picked]={min:Number(validSets.slice().sort((a,b)=>Number(b.min)-Number(a.min))[0].min)};
+      state.logs.push({id:uid(),date,exId:picked,sets:validSets.map(s=>({min:Number(s.min)})),note:$("#logNote").value.trim()});
+    } else {
+      const validSets=formSets.filter(s=>Number(s.kg)>0&&Number(s.reps)>0);
+      if(!validSets.length){toast("至少填一组有效的重量×次数");return;}
+      const best=validSets.slice().sort((a,b)=>Number(b.kg)-Number(a.kg))[0];
+      state.lastUsed=state.lastUsed||{};
+      state.lastUsed[picked]={kg:Number(best.kg),reps:Number(best.reps)};
+      state.logs.push({id:uid(),date,exId:picked,sets:validSets.map(s=>({kg:Number(s.kg),reps:Number(s.reps)})),note:$("#logNote").value.trim()});
+    }
     formSets=[{kg:"",reps:""}];
     save();closeSheet();router();toast("已保存，继续加油");
   };
@@ -413,16 +465,17 @@ function openLogForm(preExId){
 function showCurve(exId){
   const ex=exById(exId);
   if(!ex)return;
+  const isC=isCardio(ex);
   const logs=logsOf(exId);
-  openSheet(`<h2>${esc(ex.name)} · 进步曲线（${UNAME()}）</h2>
-    <div class="curve-wrap">${logs.length<2?`<div class="empty" style="padding:20px 6px">至少记录 2 次训练才能画曲线<br><span class="muted">现在有 ${logs.length} 次</span></div>`:curveSVG(ex,logs)}</div>
-    ${logs.length?`<div class="muted" style="margin-bottom:6px">历史记录</div><div class="his-list">${logs.slice().reverse().map(l=>`<div class="his-item"><span>${fmtDate(l.date)} · ${l.sets.length}组</span><b style="color:var(--main)">${fmtW(maxKg(l))}</b></div>`).join("")}</div>`:""}
+  openSheet(`<h2>${esc(ex.name)} · 进步曲线（${isC?"分钟":"重量 "+UNAME()}）</h2>
+    <div class="curve-wrap">${logs.length<2?`<div class="empty" style="padding:20px 6px">至少记录 2 次训练才能画曲线<br><span class="muted">现在有 ${logs.length} 次</span></div>`:curveSVG(ex,logs,isC)}</div>
+    ${logs.length?`<div class="muted" style="margin-bottom:6px">历史记录</div><div class="his-list">${logs.slice().reverse().map(l=>`<div class="his-item"><span>${fmtDate(l.date)} · ${l.sets.length}组</span><b style="color:var(--main)">${isC?sumMin(l)+" 分钟":fmtW(maxKg(l))}</b></div>`).join("")}</div>`:""}
     <div style="margin-top:14px"><button class="btn btn-danger" id="delEx">删除该动作（保留历史记录）</button></div>`);
   const de=$("#delEx");
   if(de)de.onclick=()=>{state.exercises=state.exercises.filter(e=>e.id!==exId);save();closeSheet();renderExercises();toast("动作已删除");};
 }
-function curveSVG(ex,logs){
-  const pts=logs.map(l=>({x:l.date,y:maxKg(l)}));
+function curveSVG(ex,logs,isC){
+  const pts=logs.map(l=>({x:l.date,y:isC?sumMin(l):maxKg(l)}));
   const W=460,H=180,P=34;
   const ys=pts.map(p=>p.y);
   const yMin=Math.min(...ys),yMax=Math.max(...ys);
@@ -430,11 +483,12 @@ function curveSVG(ex,logs){
   const x0=P,y0=H-P,x1=W-P,y1=P;
   const X=i=>pts.length>1?x0+(x1-x0)*i/(pts.length-1):(x0+x1)/2;
   const Y=v=>y1+(y0-y1)*(1-(v-yMin)/span);
+  const lbl=v=>isC?Math.round(v*10)/10:fromKg(v);
   const line2=pts.map((p,i)=>{const x=X(i),y=Y(p.y);return (i?"L":"M")+x.toFixed(1)+" "+y.toFixed(1);}).join(" ");
-  const dots=pts.map((p,i)=>{const x=X(i),y=Y(p.y);return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="5" fill="#fff" stroke="#1F6E4A" stroke-width="2.5"/><text x="${x.toFixed(1)}" y="${(y-11).toFixed(1)}" text-anchor="middle" font-size="12" fill="#174F36" font-weight="700">${fromKg(p.y)}</text>`;}).join("");
-  const grid=[0,0.25,0.5,0.75,1].map(f=>{const gv=yMin+span*f;const y=Y(gv);return `<line x1="${x0}" y1="${y}" x2="${x1}" y2="${y}" stroke="#E6EBE7" stroke-dasharray="3 4"/><text x="${x0-6}" y="${y+4}" text-anchor="end" font-size="11" fill="#8A9792">${fromKg(gv)}</text>`;}).join("");
+  const dots=pts.map((p,i)=>{const x=X(i),y=Y(p.y);return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="5" fill="#fff" stroke="#1F6E4A" stroke-width="2.5"/><text x="${x.toFixed(1)}" y="${(y-11).toFixed(1)}" text-anchor="middle" font-size="12" fill="#174F36" font-weight="700">${lbl(p.y)}</text>`;}).join("");
+  const grid=[0,0.25,0.5,0.75,1].map(f=>{const gv=yMin+span*f;const y=Y(gv);return `<line x1="${x0}" y1="${y}" x2="${x1}" y2="${y}" stroke="#E6EBE7" stroke-dasharray="3 4"/><text x="${x0-6}" y="${y+4}" text-anchor="end" font-size="11" fill="#8A9792">${lbl(gv)}</text>`;}).join("");
   const xl=pts.length>1?pts.map((p,i)=>`<text x="${X(i)}" y="${H-8}" text-anchor="middle" font-size="10" fill="#8A9792">${fmtDate(p.x)}</text>`).join(""):"";
-  return `<svg viewBox="0 0 ${W} ${H}" class="curve-svg" role="img" aria-label="${esc(ex.name)} 最大重量变化">
+  return `<svg viewBox="0 0 ${W} ${H}" class="curve-svg" role="img" aria-label="${esc(ex.name)} ${isC?"总时长":"最大重量"}变化">
     ${grid}
     <polyline points="${line2}" fill="none" stroke="#1F6E4A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
     ${dots}${xl}
@@ -452,8 +506,10 @@ function renderExercises(){
   ${all.length?groupsList.map(g=>{const es=state.exercises.filter(e=>e.group===g);
     if(!es.length)return "";
     return `<div class="ex-group">${g}</div>${es.map(e=>{
-      const ls=logsOf(e.id);const best=ls.length?Math.max(...ls.map(maxKg)):null;
-      return `<div class="ex-item" data-ex="${e.id}"><div><div class="nm">${esc(e.name)}</div><div class="info">${ls.length?`记录 ${ls.length} 次 · 最佳 ${fmtW(best)}`:"还没练过"}</div></div><span class="row"><button class="mini-btn del-ex" data-del="${e.id}" style="color:var(--danger)">删除</button><span class="muted">›</span></span></div>`;}).join("")}`;}).join(""):`<div class="empty">这个部位还没有动作</div>`}`;
+      const ls=logsOf(e.id);
+      const c=isCardio(e);
+      const best=ls.length?(c?Math.max(...ls.map(sumMin)):Math.max(...ls.map(maxKg))):null;
+      return `<div class="ex-item" data-ex="${e.id}"><div><div class="nm">${esc(e.name)}</div><div class="info">${ls.length?`记录 ${ls.length} 次 · 最佳 ${c?best+" 分钟":fmtW(best)}`:"还没练过"}</div></div><span class="row"><button class="mini-btn del-ex" data-del="${e.id}" style="color:var(--danger)">删除</button><span class="muted">›</span></span></div>`;}).join("")}`;}).join(""):`<div class="empty">这个部位还没有动作</div>`}`;
   $$("#view .pill").forEach(p=>p.onclick=()=>{exFilter=p.dataset.g;renderExercises();});
   $$("#view .ex-item").forEach(el=>el.onclick=()=>showCurve(el.dataset.ex));
   $$("#view .del-ex").forEach(b=>b.onclick=(ev)=>{
@@ -486,6 +542,7 @@ function openExForm(){
     if(!name){toast("先填动作名称");return;}
     if(state.exercises.some(e=>e.name===name&&e.group===g)){toast("这个动作已经存在");return;}
     state.exercises.push({id:uid(),name,group:g,builtin:false});
+    state.lastGroup=g;
     save();closeSheet();renderExercises();toast("已添加："+name);
   };
 }
