@@ -262,7 +262,7 @@ function renderToday(){
     setTimeout(()=>$("#proInput").focus(),150);
     $("#proSave").onclick=()=>{const m=todayMeal();m.protein=Math.max(0,Number($("#proInput").value)||0);state.meals[t]=m;save();closeSheet();renderToday();};
   };
-  $("#addLogBtn").onclick=openLogForm;
+  $("#addLogBtn").onclick=()=>openLogForm();
 }
 /* ============ 训练记录卡片 ============ */
 function logRender(l){
@@ -278,6 +278,7 @@ function logRender(l){
     <div class="set-line">${isC?l.sets.map(s=>`<span class="set-chip">${s.min}′</span>`).join(""):l.sets.map(s=>`<span class="set-chip">${fromKg(s.kg)}×${s.reps}</span>`).join("")}</div>
     <div class="row spread" style="margin-top:6px">
       <button class="mini-btn" data-curve="${l.exId}">看进步</button>
+      <button class="mini-btn" data-edit="${l.id}">编辑</button>
       <button class="mini-btn" data-del="${l.id}" style="color:var(--danger)">删除</button>
     </div>
   </div>`;
@@ -289,6 +290,7 @@ function bindLogActions(){
     state.logs=state.logs.filter(l=>l.id!==id);save();router();toast("已删除");
   });
   $$("#view [data-curve]").forEach(b=>b.onclick=()=>showCurve(b.dataset.curve));
+  $$("#view [data-edit]").forEach(b=>b.onclick=()=>openLogForm(b.dataset.edit));
 }
 /* ============ 视图：训练 ============ */
 function renderTrain(){
@@ -302,18 +304,19 @@ function renderTrain(){
     <div class="muted" style="font-weight:700;margin:14px 0 6px">${d} ${nowWeekday()}${d===todayStr()?"（今天）":""}</div>
     ${groups[d].map(logRender).join("")}
   `).join(""):`<div class="empty"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round"><path d="M4 9v6M2 10.5v3M22 10.5v3M20 9v6M4 12h16"/></svg>还没有训练记录<br>练完第一组，点上面按钮开始记录</div>`}`;
-  $("#trainAdd").onclick=openLogForm;
+  $("#trainAdd").onclick=()=>openLogForm();
   bindLogActions();
 }
 /* ============ 训练记录表单 ============ */
 let formSets=[{kg:"",reps:""}];
-function openLogForm(preExId){
+function openLogForm(editId){
   const t=todayStr();
   const exs=state.exercises;
+  const editLog=editId?state.logs.find(l=>l.id===editId):null;
   openSheet(`
-    <h2>记录训练</h2>
+    <h2>${editLog?"编辑训练":"记录训练"}</h2>
     <label class="fld">日期</label>
-    <input type="date" id="logDate" value="${t}" max="${t}">
+    <input type="date" id="logDate" value="${editLog?editLog.date:t}" max="${t}">
     <label class="fld">动作（按部位分组，点组名可收起/展开）</label>
     <div id="exPick"></div>
     <div id="lastHint"></div>
@@ -330,9 +333,9 @@ function openLogForm(preExId){
     <input type="text" id="logNote" placeholder="比如：状态不错 / 最后两组力竭">
     <div style="margin-top:16px;display:flex;gap:10px">
       <button class="btn btn-line" style="flex:1" id="cancelLog">取消</button>
-      <button class="btn btn-main" style="flex:2" id="saveLog">保存记录</button>
+      <button class="btn btn-main" style="flex:2" id="saveLog">${editLog?"保存修改":"保存记录"}</button>
     </div>`);
-  let picked=preExId||exs[0].id;
+  let picked=editLog?editLog.exId:exs[0].id;
   let isC=isCardio(exById(picked));
   const pickEl=$("#exPick");
   const hintEl=$("#lastHint");
@@ -341,7 +344,7 @@ function openLogForm(preExId){
   const openSet=new Set(exs.map(e=>e.group));
   const updateHint=()=>{
     const lu=state.lastUsed&&state.lastUsed[picked];
-    hintEl.innerHTML=lu?(isC?`<span class="tag" style="margin-top:6px">上次 ${lu.min} 分钟已自动填入，可直接改或加组</span>`:`<span class="tag" style="margin-top:6px">上次 ${fmtW(lu.kg)}×${lu.reps} 已自动填入，可直接改或加组</span>`):"";
+    hintEl.innerHTML=editLog?`<span class="tag" style="margin-top:6px">编辑模式：可加组、删组、改重量，改完点保存修改</span>`:(lu?(isC?`<span class="tag" style="margin-top:6px">上次 ${lu.min} 分钟已自动填入，可直接改或加组</span>`:`<span class="tag" style="margin-top:6px">上次 ${fmtW(lu.kg)}×${lu.reps} 已自动填入，可直接改或加组</span>`):"");
   };
   const fillFromLast=(exId)=>{
     const lu=state.lastUsed&&state.lastUsed[exId];
@@ -349,6 +352,10 @@ function openLogForm(preExId){
     formSets=lu?(c?[{min:lu.min||""}]:[{kg:lu.kg,reps:lu.reps}]):(c?[{min:""}]:[{kg:"",reps:""}]);
     updateHint();
   };
+  if(editLog){
+    formSets=editLog.sets.map(s=>(s.min!=null?{min:s.min}:{kg:s.kg,reps:s.reps}));
+    if(editLog.note)$("#logNote").value=editLog.note;
+  }
   const renderPicks=()=>{
     const byG={};exs.forEach(e=>{(byG[e.group]=byG[e.group]||[]).push(e);});
     pickEl.innerHTML=Object.keys(byG).map(g=>`
@@ -428,7 +435,8 @@ function openLogForm(preExId){
     });
   };
   renderPicks();
-  fillFromLast(picked);
+  if(!editLog)fillFromLast(picked);
+  updateHint();
   renderSets();
   $$("#unitPick .pill").forEach(p=>p.onclick=()=>{
     state.profile.unit=p.dataset.u;save();
@@ -443,22 +451,29 @@ function openLogForm(preExId){
   $("#cancelLog").onclick=closeSheet;
   $("#saveLog").onclick=()=>{
     const date=$("#logDate").value||t;
+    let sets;
     if(isC){
       const validSets=formSets.filter(s=>Number(s.min)>0);
       if(!validSets.length){toast("至少填一组有效的时长（分钟）");return;}
       state.lastUsed=state.lastUsed||{};
       state.lastUsed[picked]={min:Number(validSets.slice().sort((a,b)=>Number(b.min)-Number(a.min))[0].min)};
-      state.logs.push({id:uid(),date,exId:picked,sets:validSets.map(s=>({min:Number(s.min)})),note:$("#logNote").value.trim()});
+      sets=validSets.map(s=>({min:Number(s.min)}));
     } else {
       const validSets=formSets.filter(s=>Number(s.kg)>0&&Number(s.reps)>0);
       if(!validSets.length){toast("至少填一组有效的重量×次数");return;}
       const best=validSets.slice().sort((a,b)=>Number(b.kg)-Number(a.kg))[0];
       state.lastUsed=state.lastUsed||{};
       state.lastUsed[picked]={kg:Number(best.kg),reps:Number(best.reps)};
-      state.logs.push({id:uid(),date,exId:picked,sets:validSets.map(s=>({kg:Number(s.kg),reps:Number(s.reps)})),note:$("#logNote").value.trim()});
+      sets=validSets.map(s=>({kg:Number(s.kg),reps:Number(s.reps)}));
+    }
+    const note=$("#logNote").value.trim();
+    if(editLog){
+      state.logs=state.logs.map(l=>l.id===editLog.id?Object.assign({},l,{date,exId:picked,sets,note}):l);
+    } else {
+      state.logs.push({id:uid(),date,exId:picked,sets,note});
     }
     formSets=[{kg:"",reps:""}];
-    save();closeSheet();router();toast("已保存，继续加油");
+    save();closeSheet();router();toast(editLog?"已更新这条记录":"已保存，继续加油");
   };
 }
 /* ============ 进步曲线 ============ */
