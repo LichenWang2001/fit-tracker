@@ -263,6 +263,7 @@ function renderToday(){
     $("#proSave").onclick=()=>{const m=todayMeal();m.protein=Math.max(0,Number($("#proInput").value)||0);state.meals[t]=m;save();closeSheet();renderToday();};
   };
   $("#addLogBtn").onclick=()=>openLogForm();
+  bindLogActions();
 }
 /* ============ 训练记录卡片 ============ */
 function logRender(l){
